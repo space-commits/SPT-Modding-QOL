@@ -7,6 +7,7 @@ using Comfort.Common;
 using EFT;
 using EFT.Interactive;
 using EFT.InventoryLogic;
+using EFT.UI;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 
@@ -106,7 +107,9 @@ namespace ModdingQOL
             {
                 Weapon weapon = Utils.GetParentWeapon(mod);
                 Slot slot = mod.Parent.Container as Slot;
-                if (weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) && slot.Required)
+                Player player = Utils.GetPlayer();
+                EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
+                if (weapon != null && equipment != null && slot.Required && (Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) || !Utils.hasTool(equipment)))
                 {
                     return false;
                 }
@@ -243,7 +246,6 @@ namespace ModdingQOL
         protected override MethodBase GetTargetMethod()
         {
             return typeof(GClass2429).GetMethod("smethod_1", BindingFlags.Static | BindingFlags.NonPublic);
-
         }
 
         [PatchPrefix]
@@ -310,18 +312,10 @@ namespace ModdingQOL
 
     public class ItemSpecificationPanelPatch : ModulePatch
     {
-        private static Type _targetType;
-        private static MethodInfo _targetMethod;
-
-        public ItemSpecificationPanelPatch()
-        {
-            _targetType = AccessTools.TypeByName("ItemSpecificationPanel");
-            _targetMethod = AccessTools.Method(_targetType, "method_17");
-        }
 
         protected override MethodBase GetTargetMethod()
         {
-            return _targetMethod;
+            return typeof(ItemSpecificationPanel).GetMethod("method_17", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
         private static bool checkSlot(Slot slot, List<string> itemList, Item item)
