@@ -109,7 +109,10 @@ namespace ModdingQOL
                 Slot slot = mod.Parent.Container as Slot;
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
-                if (weapon != null && equipment != null && slot.Required && (Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) || !Utils.hasTool(equipment)))
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (weapon != null && equipment != null && slot.Required && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
                     return false;
                 }
@@ -133,7 +136,10 @@ namespace ModdingQOL
                 Weapon weapon = Utils.GetParentWeapon(mod);
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
-                if (equipment != null && player != null && weapon != null && (Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) || !Utils.hasTool(equipment)))
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (equipment != null && player != null && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
                     return false;
                 }
@@ -264,7 +270,10 @@ namespace ModdingQOL
 
                 if (equipment != null && Utils.hasTool(equipment))
                 {
-                    if (weapon != null && !Utils.disallowedSlots.Contains(weapon.Parent.Container.ID))
+                    bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                    bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+ 
+                    if (!weaponIsInHands || !weaponIsPlayers)
                     {
                         __result = GClass2897._;
                         return false;
@@ -373,7 +382,10 @@ namespace ModdingQOL
 
             if (equipment != null && Utils.hasTool(equipment))
             {
-                if (weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) && modParentSlot.Required)
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (weaponIsInHands && weaponIsPlayers && modParentSlot.Required)
                 {
                     __result = new GClass2852(__instance);
                     return false;
