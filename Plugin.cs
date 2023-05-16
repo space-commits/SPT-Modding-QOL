@@ -12,6 +12,7 @@ namespace ModdingQOL
             new CanDetatchPatch().Enable();
             new CanAttachPatch().Enable();
             new ThrowItemPatch().Enable();
+            new InteractPatch().Enable();
 
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
         }

@@ -83,6 +83,32 @@ namespace ModdingQOL
         }
     }
 
+    public class InteractPatch : ModulePatch
+    {
+        private static Type _targetType;
+        private static MethodInfo _targetMethod;
+
+        public InteractPatch()
+        {
+            _targetType = AccessTools.TypeByName("GClass2679");
+            _targetMethod = AccessTools.Method(_targetType, "IsInteractive");
+        }
+
+        protected override MethodBase GetTargetMethod()
+        {
+            return _targetMethod;
+        }
+
+        [PatchPostfix]
+        private static void PatchPostfix(EItemInfoButton button, ref ValueTuple<bool, string> __result)
+        {
+            if (!GClass1757.InRaid && button == EItemInfoButton.Modding || button == EItemInfoButton.EditBuild)
+            {
+                __result = new ValueTuple<bool, string>(true, string.Empty);
+            }
+        }
+    }
+
     public class ThrowItemPatch : ModulePatch
     {
         private static Type _targetType;
