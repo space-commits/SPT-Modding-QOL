@@ -83,6 +83,32 @@ namespace ModdingQOL
         }
     }
 
+    public class InteractPatch : ModulePatch
+    {
+        private static Type _targetType;
+        private static MethodInfo _targetMethod;
+
+        public InteractPatch()
+        {
+            _targetType = AccessTools.TypeByName("GClass2680");
+            _targetMethod = AccessTools.Method(_targetType, "IsInteractive");
+        }
+
+        protected override MethodBase GetTargetMethod()
+        {
+            return _targetMethod;
+        }
+
+        [PatchPostfix]
+        private static void PatchPostfix(EItemInfoButton button, ref ValueTuple<bool, string> __result)
+        {
+            if (!GClass1756.InRaid && button == EItemInfoButton.Modding || button == EItemInfoButton.EditBuild)
+            {
+                __result = new ValueTuple<bool, string>(true, string.Empty);
+            }
+        }
+    }
+
     public class ThrowItemPatch : ModulePatch
     {
         private static Type _targetType;
@@ -103,13 +129,16 @@ namespace ModdingQOL
         private static bool Prefix(Item item)
         {
             Mod mod;
-            if (GClass1757.InRaid && (mod = (item as Mod)) != null)
+            if (GClass1756.InRaid && (mod = (item as Mod)) != null)
             {
                 Weapon weapon = Utils.GetParentWeapon(mod);
                 Slot slot = mod.Parent.Container as Slot;
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
-                if (weapon != null && equipment != null && slot.Required && (Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) || !Utils.hasTool(equipment)))
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (weapon != null && equipment != null && slot.Required && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
                     return false;
                 }
@@ -133,7 +162,10 @@ namespace ModdingQOL
                 Weapon weapon = Utils.GetParentWeapon(mod);
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
-                if (equipment != null && player != null && weapon != null && (Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) || !Utils.hasTool(equipment)))
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (equipment != null && player != null && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
                     return false;
                 }
@@ -142,25 +174,25 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(LootItemClass __instance, TraderControllerClass itemController, Item item, int count, bool simulate, ref GStruct324 __result)
+        private static bool Prefix(LootItemClass __instance, TraderControllerClass itemController, Item item, int count, bool simulate, ref GStruct321 __result)
         {
             if (!item.ParentRecursiveCheck(__instance))
             {
-                __result = new GClass2855(item, __instance);
+                __result = new GClass2856(item, __instance);
                 return false;
             }
-            bool inRaid = GClass1757.InRaid;
-            GClass2823 gclass = null;
-            GClass2823 gclass2 = null;
+            bool inRaid = GClass1756.InRaid;
+            GClass2824 gclass = null;
+            GClass2824 gclass2 = null;
             Mod mod = item as Mod;
             Slot[] array = (mod != null && inRaid) ? Enumerable.ToArray<Slot>(__instance.VitalParts) : null;
-            Slot.GClass2866 gclass3;
+            Slot.GClass2867 gclass3;
 
             if (inRaid && mod != null && !mod.RaidModdable && !isModable(inRaid, mod))
             {
                 gclass2 = new GClass2853(mod);
             }
-            else if (!GClass2429.CheckMissingParts(mod, __instance.CurrentAddress, itemController, out gclass3))
+            else if (!GClass2428.CheckMissingParts(mod, __instance.CurrentAddress, itemController, out gclass3))
             {
                 gclass2 = gclass3;
             }
@@ -171,10 +203,10 @@ namespace ModdingQOL
                 {
                     if (gclass2 != null)
                     {
-                        Slot.GClass2866 gclass4;
-                        if ((gclass4 = (gclass2 as Slot.GClass2866)) != null)
+                        Slot.GClass2867 gclass4;
+                        if ((gclass4 = (gclass2 as Slot.GClass2867)) != null)
                         {
-                            gclass2 = new Slot.GClass2866(gclass4.Item, slot, gclass4.MissingParts);
+                            gclass2 = new Slot.GClass2867(gclass4.Item, slot, gclass4.MissingParts);
                         }
                         flag = true;
                     }
@@ -182,8 +214,8 @@ namespace ModdingQOL
                     {
                         if (inRaid && isModable(inRaid, mod))
                         {
-                            GClass2422 to = new GClass2422(slot);
-                            GStruct325<GClass2441> value = GClass2429.Move(item, to, itemController, simulate);
+                            GClass2421 to = new GClass2421(slot);
+                            GStruct322<GClass2440> value = GClass2428.Move(item, to, itemController, simulate);
                             if (value.Succeeded)
                             {
                                 __result = value;
@@ -194,24 +226,24 @@ namespace ModdingQOL
                     }
                     else
                     {
-                        GClass2422 to = new GClass2422(slot);
-                        GStruct325<GClass2441> value = GClass2429.Move(item, to, itemController, simulate);
+                        GClass2421 to = new GClass2421(slot);
+                        GStruct322<GClass2440> value = GClass2428.Move(item, to, itemController, simulate);
                         if (value.Succeeded)
                         {
                             __result = value;
                             return false;
                         }
-                        GStruct325<GClass2450> value2 = GClass2429.SplitMax(item, int.MaxValue, to, itemController, itemController, simulate);
+                        GStruct322<GClass2449> value2 = GClass2428.SplitMax(item, int.MaxValue, to, itemController, itemController, simulate);
                         if (value2.Succeeded)
                         {
                             __result = value2;
                             return false;
                         }
                         gclass = value.Error;
-                        if (!GClass770.DisabledForNow && GClass2430.CanSwap(item, slot))
+                        if (!GClass770.DisabledForNow && GClass2429.CanSwap(item, slot))
                         {
                             //ambiguous refernce, wrong ref might bug it out
-                            __result = new GStruct324((GInterface265)null);
+                            __result = new GStruct321((GInterface264)null);
                             return false;
                         }
                     }
@@ -221,7 +253,7 @@ namespace ModdingQOL
             {
                 gclass2 = null;
             }
-            GStruct325<GInterface266> value3 = GClass2429.QuickFindAppropriatePlace(item, itemController, __instance.ToEnumerable<LootItemClass>(), GClass2429.EMoveItemOrder.Apply, simulate);
+            GStruct322<GInterface265> value3 = GClass2428.QuickFindAppropriatePlace(item, itemController, __instance.ToEnumerable<LootItemClass>(), GClass2428.EMoveItemOrder.Apply, simulate);
             if (value3.Succeeded)
             {
                 __result = value3;
@@ -231,10 +263,10 @@ namespace ModdingQOL
             {
                 gclass = value3.Error;
             }
-            GClass2823 error;
+            GClass2824 error;
             if ((error = gclass2) == null)
             {
-                error = (gclass ?? new GClass2855(item, __instance));
+                error = (gclass ?? new GClass2856(item, __instance));
             }
             __result = error;
             return false;
@@ -245,17 +277,17 @@ namespace ModdingQOL
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(GClass2429).GetMethod("smethod_1", BindingFlags.Static | BindingFlags.NonPublic);
+            return typeof(GClass2428).GetMethod("smethod_1", BindingFlags.Static | BindingFlags.NonPublic);
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref GStruct326<GClass2897> __result, Item item, ItemAddress to, TraderControllerClass itemController)
+        private static bool Prefix(ref GStruct323<GClass2898> __result, Item item, ItemAddress to, TraderControllerClass itemController)
         {
             if (to.Container.ID == "Dogtag")
             {
                 return false;
             }
-            if (GClass1757.InRaid)
+            if (GClass1756.InRaid)
             {
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
@@ -264,47 +296,50 @@ namespace ModdingQOL
 
                 if (equipment != null && Utils.hasTool(equipment))
                 {
-                    if (weapon != null && !Utils.disallowedSlots.Contains(weapon.Parent.Container.ID))
+                    bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                    bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+ 
+                    if (!weaponIsInHands || !weaponIsPlayers)
                     {
-                        __result = GClass2897._;
+                        __result = GClass2898._;
                         return false;
                     }
 
                     if (weapon == null)
                     {
-                        __result = GClass2897._;
+                        __result = GClass2898._;
                         return false;
                     }
                 }
 
-                if ((mod = (item as Mod)) != null && !mod.RaidModdable && (to is GClass2422 || item.Parent is GClass2422))
+                if ((mod = (item as Mod)) != null && !mod.RaidModdable && (to is GClass2421 || item.Parent is GClass2421))
                 {
                     __result = new GClass2853(mod);
                     return false;
                 }
-                GClass2422 gclass;
-                if (((gclass = (to as GClass2422)) != null || (gclass = (item.Parent as GClass2422)) != null) && gclass.Slot.Required)
+                GClass2421 gclass;
+                if (((gclass = (to as GClass2421)) != null || (gclass = (item.Parent as GClass2421)) != null) && gclass.Slot.Required)
                 {
-                    __result = new GClass2854(gclass.Slot);
+                    __result = new GClass2855(gclass.Slot);
                     return false;
                 }
             }
-            if (item is LootItemClass && item.Parent is GClass2422)
+            if (item is LootItemClass && item.Parent is GClass2421)
             {
                 CantRemoveFromSlotsDuringRaidComponent itemComponent = item.GetItemComponent<CantRemoveFromSlotsDuringRaidComponent>();
                 IContainer container = item.Parent.Container;
                 if (itemComponent != null && !(container is IItemOwner) && container.ParentItem is EquipmentClass && !itemComponent.CanRemoveFromSlotDuringRaid(container.ID))
                 {
-                    __result = new GClass2429.GClass2888(item, container.ID);
+                    __result = new GClass2428.GClass2889(item, container.ID);
                     return false;
                 }
             }
-            GStruct326<bool> gstruct = GClass2429.DestinationCheck(item.Parent, to, itemController.OwnerType);
+            GStruct323<bool> gstruct = GClass2428.DestinationCheck(item.Parent, to, itemController.OwnerType);
             if (gstruct.Failed)
             {
                 __result = gstruct.Error;
             }
-            __result = GClass2897._;
+            __result = GClass2898._;
             return false;
         }
     }
@@ -320,7 +355,7 @@ namespace ModdingQOL
 
         private static bool checkSlot(Slot slot, List<string> itemList, Item item)
         {
-            if (!GClass1757.InRaid)
+            if (!GClass1756.InRaid)
             {
                 return false;
             }
@@ -333,7 +368,7 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref KeyValuePair<EModLockedState, string> __result, Slot slot, Item ___item_0, InventoryControllerClass ___gclass2417_0, List<string> ___list_0)
+        private static bool Prefix(ref KeyValuePair<EModLockedState, string> __result, Slot slot, Item ___item_0, InventoryControllerClass ___gclass2416_0, List<string> ___list_0)
         {
             string text = (slot.ContainedItem != null) ? slot.ContainedItem.Name.Localized(null) : string.Empty;
             if (!checkSlot(slot, ___list_0, ___item_0))
@@ -359,9 +394,9 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref Mod __instance, ref GStruct326<bool> __result, IContainer toContainer)
+        private static bool Prefix(ref Mod __instance, ref GStruct323<bool> __result, IContainer toContainer)
         {
-            if (!GClass1757.InRaid)
+            if (!GClass1756.InRaid)
             {
                 __result = true;
                 return false;
@@ -373,9 +408,12 @@ namespace ModdingQOL
 
             if (equipment != null && Utils.hasTool(equipment))
             {
-                if (weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID) && modParentSlot.Required)
+                bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+
+                if (weaponIsInHands && weaponIsPlayers && modParentSlot.Required)
                 {
-                    __result = new GClass2852(__instance);
+                    __result = new GClass2853(__instance);
                     return false;
                 }
                 if (weapon == null)
@@ -389,12 +427,12 @@ namespace ModdingQOL
             {
                 if (!__instance.RaidModdable)
                 {
-                    __result = new GClass2852(__instance);
+                    __result = new GClass2853(__instance);
                     return false;
                 }
                 if (slot.Required)
                 {
-                    __result = new GClass2854(slot);
+                    __result = new GClass2855(slot);
                     return false;
                 }
             }
