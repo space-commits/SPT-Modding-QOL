@@ -42,7 +42,7 @@ namespace ModdingQOL
         public static Player GetPlayer()
         {
             GameWorld gameWorld = Singleton<GameWorld>.Instance;
-            return gameWorld.AllAlivePlayersList[0] != null ? gameWorld.AllAlivePlayersList[0] : null;
+            return gameWorld.MainPlayer != null ? gameWorld.MainPlayer : null;
         }
 
         public static Weapon GetParentWeapon(Item item)
