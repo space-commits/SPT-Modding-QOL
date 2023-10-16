@@ -11,27 +11,30 @@ using EFT.UI;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 
-using GameState = GClass1819;
-using ApplyItemStruct = GStruct370;
-using CannotApplyClass = GClass3102;
-using CannotApplyInRaidClass = GClass3099;
-using ItemMoveHandlerClass = GClass2672;
-using Class1 = GClass3070;
-using Class2 = EFT.InventoryLogic.Slot.GClass3113;
-using Class3 = GClass2665;
-using ItemMoveResultStruct1 = GStruct371<GClass2684>;
-using ItemMoveResultStruct2 = GStruct371<GClass2693>;
-using SchizoClass = GClass780;
-using CanSwapClass = GClass2673;
-using PoitnlessErrorClass = GClass3070;
-using ResultStruct = GStruct371<GInterface277>;
-using ResultStruct2 = GStruct372<GClass3145>;
-using RessultStuct3 = GStruct372<bool>;
-using GenericIntentoryErrorClass = GClass3095;
-using CompilerFuckedClass = GClass3145;
-using CannotModifyVitalPartClass = GClass3101;
-using CannotMoveItemDuringRaidClass = GClass2672.GClass3135;
+using GameState = GClass1716;
+using ApplyItemStruct = GStruct374;
+using CannotApplyClass = GClass3028; //Inventory Errors/Cannot apply item
+using CannotApplyInRaidClass = GClass3025; //Inventory Errors/Not moddable in raid
+using ItemMoveHandlerClass = GClass2585; //No space for this quest item
+using VitalPartErrorClass = EFT.InventoryLogic.Slot.GClass3039; //because it is missing vital parts:\n
+using ErrorEventClass = GClass2578; //base.RaiseAddEvent(item, status, profileId, silent);
+using ItemMoveResultStruct1 = GStruct375<GClass2597>;
+using ItemMoveResultStruct2 = GStruct375<GClass2606>;
+using SchizoClass = GClass668;
+using CanSwapClass = GClass2586;
+using ResultStruct = GStruct375<GInterface275>;
+using ResultStruct2 = GStruct376<GClass3072>;
+using RessultStuct3 = GStruct376<bool>;
+using GenericIntentoryErrorClass = GClass3021;
+using CompilerFuckedClass = GClass3072;
+using CannotModifyVitalPartClass = GClass3027;
+using CannotMoveItemDuringRaidClass = GClass2585.GClass3061;
 using EFT.UI.WeaponModding;
+using Diz.LanguageExtensions;
+
+
+//If you are looking through this code, you have my sympathy. It's a lot of decompiled gibberish,
+//because the UI code is confusing and convoluted and I can't make sense of it enough to rewrite it cleanly.
 
 namespace ModdingQOL
 {
@@ -233,31 +236,30 @@ namespace ModdingQOL
                 return false;
             }
             bool inRaid = GameState.InRaid;
-            Class1 gclass = null;
-            Class1 gclass2 = null;
+            Error error = null;
+            Error error2 = null;
             Mod mod = item as Mod;
             Slot[] array = (mod != null && inRaid) ? Enumerable.ToArray<Slot>(__instance.VitalParts) : null;
-            Class2 gclass3;
-
+            VitalPartErrorClass gclass3;
             if (inRaid && mod != null && !mod.RaidModdable && !isModable(inRaid, mod))
             {
-                gclass2 = new CannotApplyInRaidClass(mod);
+                error2 = new CannotApplyInRaidClass(mod);
             }
             else if (!ItemMoveHandlerClass.CheckMissingParts(mod, __instance.CurrentAddress, itemController, out gclass3))
             {
-                gclass2 = gclass3;
+                error2 = gclass3;
             }
             bool flag = false;
             foreach (Slot slot in __instance.AllSlots)
             {
-                if ((gclass2 == null || !flag) && slot.CanAccept(item))
+                if ((error2 == null || !flag) && slot.CanAccept(item))
                 {
-                    if (gclass2 != null)
+                    if (error2 != null)
                     {
-                        Class2 gclass4;
-                        if ((gclass4 = (gclass2 as Class2)) != null)
+                        VitalPartErrorClass gclass4;
+                        if ((gclass4 = (error2 as VitalPartErrorClass)) != null)
                         {
-                            gclass2 = new Class2(gclass4.Item, slot, gclass4.MissingParts);
+                            error2 = new VitalPartErrorClass(gclass4.Item, slot, gclass4.MissingParts);
                         }
                         flag = true;
                     }
@@ -265,7 +267,7 @@ namespace ModdingQOL
                     {
                         if (inRaid && isModable(inRaid, mod))
                         {
-                            Class3 to = new Class3(slot);
+                            ErrorEventClass to = new ErrorEventClass(slot);
                             ItemMoveResultStruct1 value = ItemMoveHandlerClass.Move(item, to, itemController, simulate);
                             if (value.Succeeded)
                             {
@@ -273,11 +275,11 @@ namespace ModdingQOL
                                 return false;
                             }
                         }
-                        gclass = new CannotApplyInRaidClass(mod);
+                        error = new CannotApplyInRaidClass(mod);
                     }
                     else
                     {
-                        Class3 to = new Class3(slot);
+                        ErrorEventClass to = new ErrorEventClass(slot);
                         ItemMoveResultStruct1 value = ItemMoveHandlerClass.Move(item, to, itemController, simulate);
                         if (value.Succeeded)
                         {
@@ -290,10 +292,10 @@ namespace ModdingQOL
                             __result = value2;
                             return false;
                         }
-                        gclass = value.Error;
+                        error = value.Error;
                         if (!SchizoClass.DisabledForNow && CanSwapClass.CanSwap(item, slot))
                         {
-                            __result = new ApplyItemStruct((PoitnlessErrorClass)null);
+                            __result = new ApplyItemStruct((Error)null);
                             return false;
                         }
                     }
@@ -301,7 +303,7 @@ namespace ModdingQOL
             }
             if (!flag)
             {
-                gclass2 = null;
+                error2 = null;
             }
             ResultStruct value3 = ItemMoveHandlerClass.QuickFindAppropriatePlace(item, itemController, __instance.ToEnumerable<LootItemClass>(), ItemMoveHandlerClass.EMoveItemOrder.Apply, simulate);
             if (value3.Succeeded)
@@ -311,14 +313,14 @@ namespace ModdingQOL
             }
             if (!(value3.Error is GenericIntentoryErrorClass))
             {
-                gclass = value3.Error;
+                error = value3.Error;
             }
-            Class1 error;
-            if ((error = gclass2) == null)
+            Error error3;
+            if ((error3 = error2) == null)
             {
-                error = (gclass ?? new CannotApplyClass(item, __instance));
+                error3 = (error ?? new CannotApplyClass(item, __instance));
             }
-            __result = error;
+            __result = error3;
             return false;
         }
     }
@@ -362,19 +364,19 @@ namespace ModdingQOL
                     }
                 }
 
-                if ((mod = (item as Mod)) != null && !mod.RaidModdable && (to is Class3 || item.Parent is Class3))
+                if ((mod = (item as Mod)) != null && !mod.RaidModdable && (to is ErrorEventClass || item.Parent is ErrorEventClass))
                 {
                     __result = new CannotApplyInRaidClass(mod);
                     return false;
                 }
-                Class3 gclass;
-                if (((gclass = (to as Class3)) != null || (gclass = (item.Parent as Class3)) != null) && gclass.Slot.Required)
+                ErrorEventClass gclass;
+                if (((gclass = (to as ErrorEventClass)) != null || (gclass = (item.Parent as ErrorEventClass)) != null) && gclass.Slot.Required)
                 {
                     __result = new CannotModifyVitalPartClass(gclass.Slot);
                     return false;
                 }
             }
-            if (item is LootItemClass && item.Parent is Class3)
+            if (item is LootItemClass && item.Parent is ErrorEventClass)
             {
                 CantRemoveFromSlotsDuringRaidComponent itemComponent = item.GetItemComponent<CantRemoveFromSlotsDuringRaidComponent>();
                 IContainer container = item.Parent.Container;
@@ -418,7 +420,7 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref KeyValuePair<EModLockedState, string> __result, Slot slot, Item ___item_0, InventoryControllerClass ___gclass2659_0, List<string> ___list_0)
+        private static bool Prefix(ref KeyValuePair<EModLockedState, string> __result, Slot slot, Item ___item_0, InventoryControllerClass ___gclass2572_0, List<string> ___list_0)
         {
             string text = (slot.ContainedItem != null) ? slot.ContainedItem.Name.Localized(null) : string.Empty;
             if (!checkSlot(slot, ___list_0, ___item_0))
