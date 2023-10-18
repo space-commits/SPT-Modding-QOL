@@ -144,7 +144,7 @@ namespace ModdingQOL
 
         public InteractPatch()
         {
-            _targetType = AccessTools.TypeByName("GClass2926");
+            _targetType = AccessTools.TypeByName("GClass2844");
             _targetMethod = AccessTools.Method(_targetType, "IsInteractive");
         }
 
