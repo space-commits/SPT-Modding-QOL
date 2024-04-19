@@ -11,24 +11,26 @@ using EFT.UI;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 
-using GameState = GClass1716;
-using ApplyItemStruct = GStruct374;
-using CannotApplyClass = GClass3028; //Inventory Errors/Cannot apply item
-using CannotApplyInRaidClass = GClass3025; //Inventory Errors/Not moddable in raid
-using ItemMoveHandlerClass = GClass2585; //No space for this quest item
-using VitalPartErrorClass = EFT.InventoryLogic.Slot.GClass3039; //because it is missing vital parts:\n
-using ErrorEventClass = GClass2578; //base.RaiseAddEvent(item, status, profileId, silent);
-using ItemMoveResultStruct1 = GStruct375<GClass2597>;
-using ItemMoveResultStruct2 = GStruct375<GClass2606>;
-using SchizoClass = GClass668;
-using CanSwapClass = GClass2586;
-using ResultStruct = GStruct375<GInterface275>;
-using ResultStruct2 = GStruct376<GClass3072>;
-using RessultStuct3 = GStruct376<bool>;
-using GenericIntentoryErrorClass = GClass3021;
-using CompilerFuckedClass = GClass3072;
-using CannotModifyVitalPartClass = GClass3027;
-using CannotMoveItemDuringRaidClass = GClass2585.GClass3061;
+using GameState = GClass1849; //.InRaid
+using ApplyItemStruct = GStruct413; //LootItemClass.Apply() return type
+using CannotApplyClass = GClass3300; //Inventory Errors/Cannot apply item
+using CannotApplyInRaidClass = GClass3297; //Inventory Errors/Not moddable in raid (cstor takes in item)
+using VitalPartErrorClass = EFT.InventoryLogic.Slot.GClass3314; //because it is missing vital parts:\n
+using ErrorEventClass = GClass2767; //base.RaiseAddEvent(item, status, profileId, silent);
+
+using ItemMoveResultStruct = GStruct414<GClass2786>; //LootItemClass.Apply()...InteractionsHandlerClass.Move(...)
+using ItemSplitResultStruct = GStruct414<GClass2795>;
+using UIClass = GClass747; //LootItemClass.Apply()...DisabledForNow
+using CanSwapClass = GClass2775; //LootItemClass.Apply()....CanSwap
+using GenericIntentoryErrorClass = GClass3293; //LootItemClass.Apply()...value3.Error is
+
+using ResultStruct = GStruct414<GInterface324>;// gstruct5 = InteractionsHandlerClass.QuickFindAppropriatePlace
+using ResultStruct2 = GStruct416<GClass3348>; //returntype of InteractionsHandlerClass.smethod_1()
+using ResultStuct3 = GStruct416<bool>; //gstruct = InteractionsHandlerClass.DestinationCheck
+using CompilerFuckedClass = GClass3348; //final returned value for InteractionsHandlerClass.smethod_1()
+
+using CannotModifyVitalPartClass = GClass3299; //InteractionsHandlerClass.smethod_1().... != null && gclass2.Slot.Required) return new...
+using CannotMoveItemDuringRaidClass = InteractionsHandlerClass.GClass3336; //itemComponent != null && !(container is IItemOwner)....
 using EFT.UI.WeaponModding;
 using Diz.LanguageExtensions;
 
@@ -144,7 +146,7 @@ namespace ModdingQOL
 
         public InteractPatch()
         {
-            _targetType = AccessTools.TypeByName("GClass2844");
+            _targetType = AccessTools.TypeByName("GClass3052");
             _targetMethod = AccessTools.Method(_targetType, "IsInteractive");
         }
 
@@ -154,11 +156,11 @@ namespace ModdingQOL
         }
 
         [PatchPostfix]
-        private static void PatchPostfix(EItemInfoButton button, ref ValueTuple<bool, string> __result)
+        private static void PatchPostfix(EItemInfoButton button, ref IResult __result)
         {
             if (!GameState.InRaid && button == EItemInfoButton.Modding || button == EItemInfoButton.EditBuild)
             {
-                __result = new ValueTuple<bool, string>(true, string.Empty);
+                __result = SuccessfulResult.New;
             }
         }
     }
@@ -190,7 +192,7 @@ namespace ModdingQOL
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
                 bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
-                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID == Singleton<GameWorld>.Instance.MainPlayer.ProfileId;
 
                 if (weapon != null && equipment != null && slot.Required && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
@@ -217,7 +219,7 @@ namespace ModdingQOL
                 Player player = Utils.GetPlayer();
                 EquipmentClass equipment = (EquipmentClass)AccessTools.Property(typeof(Player), "Equipment").GetValue(player);
                 bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
-                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID == Singleton<GameWorld>.Instance.MainPlayer.ProfileId; 
 
                 if (equipment != null && player != null && ((weaponIsInHands && weaponIsPlayers) || !Utils.hasTool(equipment)))
                 {
@@ -245,7 +247,7 @@ namespace ModdingQOL
             {
                 error2 = new CannotApplyInRaidClass(mod);
             }
-            else if (!ItemMoveHandlerClass.CheckMissingParts(mod, __instance.CurrentAddress, itemController, out gclass3))
+            else if (!InteractionsHandlerClass.CheckMissingParts(mod, __instance.CurrentAddress, itemController, out gclass3))
             {
                 error2 = gclass3;
             }
@@ -268,7 +270,7 @@ namespace ModdingQOL
                         if (inRaid && isModable(inRaid, mod))
                         {
                             ErrorEventClass to = new ErrorEventClass(slot);
-                            ItemMoveResultStruct1 value = ItemMoveHandlerClass.Move(item, to, itemController, simulate);
+                            ItemMoveResultStruct value = InteractionsHandlerClass.Move(item, to, itemController, simulate);
                             if (value.Succeeded)
                             {
                                 __result = value;
@@ -280,20 +282,20 @@ namespace ModdingQOL
                     else
                     {
                         ErrorEventClass to = new ErrorEventClass(slot);
-                        ItemMoveResultStruct1 value = ItemMoveHandlerClass.Move(item, to, itemController, simulate);
+                        ItemMoveResultStruct value = InteractionsHandlerClass.Move(item, to, itemController, simulate);
                         if (value.Succeeded)
                         {
                             __result = value;
                             return false;
                         }
-                        ItemMoveResultStruct2 value2 = ItemMoveHandlerClass.SplitMax(item, int.MaxValue, to, itemController, itemController, simulate);
+                        ItemSplitResultStruct value2 = InteractionsHandlerClass.SplitMax(item, int.MaxValue, to, itemController, itemController, simulate);
                         if (value2.Succeeded)
                         {
                             __result = value2;
                             return false;
                         }
                         error = value.Error;
-                        if (!SchizoClass.DisabledForNow && CanSwapClass.CanSwap(item, slot))
+                        if (!UIClass.DisabledForNow && CanSwapClass.CanSwap(item, slot))
                         {
                             __result = new ApplyItemStruct((Error)null);
                             return false;
@@ -305,7 +307,7 @@ namespace ModdingQOL
             {
                 error2 = null;
             }
-            ResultStruct value3 = ItemMoveHandlerClass.QuickFindAppropriatePlace(item, itemController, __instance.ToEnumerable<LootItemClass>(), ItemMoveHandlerClass.EMoveItemOrder.Apply, simulate);
+            ResultStruct value3 = InteractionsHandlerClass.QuickFindAppropriatePlace(item, itemController, __instance.ToEnumerable<LootItemClass>(), InteractionsHandlerClass.EMoveItemOrder.Apply, simulate);
             if (value3.Succeeded)
             {
                 __result = value3;
@@ -329,7 +331,7 @@ namespace ModdingQOL
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(ItemMoveHandlerClass).GetMethod("smethod_1", BindingFlags.Static | BindingFlags.NonPublic);
+            return typeof(InteractionsHandlerClass).GetMethod("smethod_1", BindingFlags.Static | BindingFlags.Public);
         }
 
         [PatchPrefix]
@@ -349,7 +351,7 @@ namespace ModdingQOL
                 if (equipment != null && Utils.hasTool(equipment))
                 {
                     bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
-                    bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+                    bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID == Singleton<GameWorld>.Instance.MainPlayer.ProfileId;
  
                     if (!weaponIsInHands || !weaponIsPlayers)
                     {
@@ -379,14 +381,14 @@ namespace ModdingQOL
             if (item is LootItemClass && item.Parent is ErrorEventClass)
             {
                 CantRemoveFromSlotsDuringRaidComponent itemComponent = item.GetItemComponent<CantRemoveFromSlotsDuringRaidComponent>();
-                IContainer container = item.Parent.Container;
+                EFT.InventoryLogic.IContainer container = item.Parent.Container;
                 if (itemComponent != null && !(container is IItemOwner) && container.ParentItem is EquipmentClass && !itemComponent.CanRemoveFromSlotDuringRaid(container.ID))
                 {
                     __result = new CannotMoveItemDuringRaidClass(item, container.ID);
                     return false;
                 }
             }
-            RessultStuct3 gstruct = ItemMoveHandlerClass.DestinationCheck(item.Parent, to, itemController.OwnerType);
+            ResultStuct3 gstruct = InteractionsHandlerClass.DestinationCheck(item.Parent, to, itemController.OwnerType);
             if (gstruct.Failed)
             {
                 __result = gstruct.Error;
@@ -402,7 +404,7 @@ namespace ModdingQOL
 
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(ItemSpecificationPanel).GetMethod("method_17", BindingFlags.Instance | BindingFlags.NonPublic);
+            return typeof(ItemSpecificationPanel).GetMethod("method_17", BindingFlags.Instance | BindingFlags.Public);
         }
 
         private static bool checkSlot(Slot slot, List<string> itemList, Item item)
@@ -420,20 +422,20 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref KeyValuePair<EModLockedState, string> __result, Slot slot, Item ___item_0, InventoryControllerClass ___gclass2572_0, List<string> ___list_0)
+        private static bool Prefix(ref KeyValuePair<EModLockedState, ModSlotView.GStruct399> __result, Slot slot, Item ___item_0, List<string> ___list_0)
         {
             string text = (slot.ContainedItem != null) ? slot.ContainedItem.Name.Localized(null) : string.Empty;
             if (!checkSlot(slot, ___list_0, ___item_0))
             {
-                __result = new KeyValuePair<EModLockedState, string>(EModLockedState.Unlocked, text);
+                __result = new KeyValuePair<EModLockedState, ModSlotView.GStruct399>(EModLockedState.Unlocked, new ModSlotView.GStruct399 {Error = text });
                 return false;
             }
             if (slot.ID.StartsWith("camora"))
             {
-                __result = new KeyValuePair<EModLockedState, string>(EModLockedState.ChamberUnchecked, "<color=#d77400>" + "You need to check the revolver drum".Localized(null) + "</color>");
+                __result = new KeyValuePair<EModLockedState, ModSlotView.GStruct399>(EModLockedState.ChamberUnchecked, new ModSlotView.GStruct399 { Error = "<color=#d77400>" + "You need to check the revolver drum".Localized(null) + "</color>" });
                 return false;
             }
-            __result = new KeyValuePair<EModLockedState, string>(EModLockedState.ChamberUnchecked, "<color=#d77400>" + "You need to check chamber in weapon".Localized(null) + "</color>");
+            __result = new KeyValuePair<EModLockedState, ModSlotView.GStruct399>(EModLockedState.ChamberUnchecked, new ModSlotView.GStruct399 { Error = "<color=#d77400>" + "You need to check chamber in weapon".Localized(null) + "</color>" });
             return false;
         }
     }
@@ -446,7 +448,7 @@ namespace ModdingQOL
         }
 
         [PatchPrefix]
-        private static bool Prefix(ref Mod __instance, ref RessultStuct3 __result, IContainer toContainer)
+        private static bool Prefix(ref Mod __instance, ref ResultStuct3 __result, IContainer toContainer)
         {
             if (!GameState.InRaid)
             {
@@ -461,7 +463,7 @@ namespace ModdingQOL
             if (equipment != null && Utils.hasTool(equipment))
             {
                 bool weaponIsInHands = weapon != null && Utils.disallowedSlots.Contains(weapon.Parent.Container.ID);
-                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID.StartsWith("pmc");
+                bool weaponIsPlayers = weapon != null && weapon?.Owner?.ID != null && weapon.Owner.ID == Singleton<GameWorld>.Instance.MainPlayer.ProfileId;
 
                 if (weaponIsInHands && weaponIsPlayers && modParentSlot.Required)
                 {
